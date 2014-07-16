@@ -30,10 +30,8 @@ namespace FFMPEGDemoClient
         public static VideoConversionJob CreateJob(string inputVideo, string watermarkUrl, string previewVideo, string posterImage, string loggingBlob, string jobCompletionUrl)
         {
             var resolution = @"-s ""512x288"" ";
-            var videobitrate = @"-b:v 1500k ";
-            // var watermark = @"-filter_complex ""overlay=main_w-overlay_w-10:main_h-overlay_h-10"" ";
-            // var watermark = @"-filter_complex ""overlay=(main_w+overlay_w)/2:(main_h+overlay_h)/2"" ";
-            var watermark = @"-vf ""movie={{in:1}} [watermark]; [in][watermark] overlay=main_w-overlay_w-10:main_h-overlay_h-10 [out]"" ";
+            var videobitrate = @"-b:v 600k ";
+            var watermark = @"-vf ""movie={{in:1}} [watermark]; [in][watermark] overlay=main_w-overlay_w-20:20 [out]"" ";
             var codec_mp4 = @"-vcodec libx264 -pix_fmt yuv420p " + watermark + videobitrate;
             var codec_poster = @"-ss 00:02 -vframes 1 -r 1 -f image2 " + watermark + videobitrate;
             var mp4_commandline = @"ffmpeg -i {{in:0}} " + codec_mp4 + resolution + @" {{out:0}} ";
@@ -109,7 +107,7 @@ namespace FFMPEGDemoClient
                 previewVideo: SampleJobs.GetSAS(client, resultContainerName, "preview.mp4", policyName),
                 posterImage: SampleJobs.GetSAS(client, resultContainerName, "thumbnail.jpg", policyName),
                 loggingBlob: SampleJobs.GetSAS(client, resultContainerName, "log.txt", policyName),
-                jobCompletionUrl: "http://sampleapi.cloudapp.net/api/finishedstatus.php?job=123");
+                jobCompletionUrl: string.Empty);
 
             var loop = new JobQueueWrapper(SampleJobs.CloudStorageAccount, queueName, TimeSpan.FromMinutes(60));
             loop.SubmitJob(job);

@@ -143,20 +143,20 @@ namespace LargeFileUploader
 
             Func<Task> saveListToFile = async () =>
             {
-                var text = new StringBuilder();
-                text.AppendLine("{");
-                text.AppendLine("  file = \"" + file.FullName + "\", ");
-                text.AppendLine("  length = " + file.Length + ", ");
-                text.AppendLine("  chunkSize = " + NumBytesPerChunk + ", ");
-                text.AppendLine("  blobname = \"" + blobName + "\", ");
-                text.AppendLine("  blobEndpoint = \"" + storageAccount.BlobEndpoint.AbsoluteUri + "\", ");
-                text.AppendLine("  chunks =");
-                text.AppendLine("  {");
-                debugList.ForEach(_ => text.AppendLine(_));
-                text.AppendLine("  }");
-                text.AppendLine("}");
+                //var text = new StringBuilder();
+                //text.AppendLine("{");
+                //text.AppendLine("  file = \"" + file.FullName + "\", ");
+                //text.AppendLine("  length = " + file.Length + ", ");
+                //text.AppendLine("  chunkSize = " + NumBytesPerChunk + ", ");
+                //text.AppendLine("  blobname = \"" + blobName + "\", ");
+                //text.AppendLine("  blobEndpoint = \"" + storageAccount.BlobEndpoint.AbsoluteUri + "\", ");
+                //text.AppendLine("  chunks =");
+                //text.AppendLine("  {");
+                //debugList.ForEach(_ => text.AppendLine(_));
+                //text.AppendLine("  }");
+                //text.AppendLine("}");
 
-                File.WriteAllText("log.txt", text.ToString());
+                //File.WriteAllText("log.txt", text.ToString());
             };
 
             Console.WriteLine("Starting upload in chunks of {0} bytes", NumBytesPerChunk);

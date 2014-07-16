@@ -216,20 +216,24 @@ namespace FFMPEGLib
 
                     #region Call web site
 
-                    for (int i=0; i<5; i++) {
-                        var httpClient = new HttpClient();
-                        var response = httpClient.GetAsync(job.JobCompletionNotificationUrl).Result;
-                        if (response.IsSuccessStatusCode) 
-                        { 
-                            break; 
-                        }
-                        else
+                    if (!string.IsNullOrEmpty(job.JobCompletionNotificationUrl))
+                    {
+                        for (int i = 0; i < 5; i++)
                         {
-                            logger.logErr(string.Format("Could not call {0}", job.JobCompletionNotificationUrl));
-                            flush();
-                            Thread.Sleep(TimeSpan.FromSeconds(2));
-                        }
+                            var httpClient = new HttpClient();
+                            var response = httpClient.GetAsync(job.JobCompletionNotificationUrl).Result;
+                            if (response.IsSuccessStatusCode)
+                            {
+                                break;
+                            }
+                            else
+                            {
+                                logger.logErr(string.Format("Could not call {0}", job.JobCompletionNotificationUrl));
+                                flush();
+                                Thread.Sleep(TimeSpan.FromSeconds(2));
+                            }
 
+                        }
                     }
 
                     #endregion
@@ -266,9 +270,6 @@ namespace FFMPEGLib
 
         public static Tuple<string,IList<FileInfo>> SubstituteCommandlineArgs(string _, IList<FileInfo> localInputFiles, IList<FileInfo> localResultFiles)
         {
-            // "D:\src.customers\Broadcast Technologies\src\MediaServicesFuerArme\FFMPEGDemoClient\bin\Debug\ffmpeg.exe" -i "C:\Users\chgeuer\Desktop\BT\8420101_SchnellsterColt_video.bft"
-            // -vcodec libx264 -pix_fmt yuv420p -vf "movie='D\:/src.customers/Broadcast Technologies/Logo/Broadcast_Frosch.png' [watermark]; [in][watermark] overlay=main_w-overlay_w-10:main_h-overlay_h-10 [out]" -b:v 1500k -s "960x540"  "D:\src.customers\Broadcast Technologies\src\MediaServicesFuerArme\FFMPEGDemoClient\bin\Debug\preview.mp4"
-
             _ = Regex.Replace(_, "^ffmpeg[\\S]*", string.Empty);
 
             for (var i = 0; i < localInputFiles.Count; i++)
@@ -299,6 +300,5 @@ namespace FFMPEGLib
 
             return new Tuple<string, IList<FileInfo>>(_, outputsOfThisExecution);
         }
-
     }
 }

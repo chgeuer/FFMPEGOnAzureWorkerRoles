@@ -8,34 +8,92 @@ namespace FFMPEGDemoClient
     using System.Collections.Generic;
     using System.IO;
     using FFMPEGLib;
+    using System.Threading.Tasks;
+using Microsoft.WindowsAzure.Storage;
+    using Microsoft.WindowsAzure.Storage.Blob;
 
     class FFMPEGDemoClientProgram
     {
+        public static Func<string, string> CreateSASGenerator(CloudStorageAccount account, string containername)
+        {
+            var client = account.CreateCloudBlobClient();
+            var container = client.GetContainerReference(containername);
+            container.CreateIfNotExists();
+
+            #region set SAS Policy
+
+            var policyName = "ffmpeg";
+            var permissions = new BlobContainerPermissions { PublicAccess = BlobContainerPublicAccessType.Off };
+            permissions.SharedAccessPolicies[policyName] = new SharedAccessBlobPolicy
+            {
+                Permissions = SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.Write | SharedAccessBlobPermissions.List,
+                SharedAccessExpiryTime = DateTime.UtcNow.AddYears(1)
+            };
+            container.SetPermissions(permissions);
+
+            #endregion
+
+            return blobname =>
+            {
+                var blob = container.GetBlockBlobReference(blobname);
+                var sas = blob.GetSharedAccessSignature(new SharedAccessBlobPolicy(), policyName);
+
+                var fullUrl = blob.Uri.ToString() + sas;
+
+                return fullUrl;
+            };
+        }
+
+
         static void Main(string[] args)
         {
             var jobId = Guid.NewGuid().ToString();
-
-            var client = SampleJobs.CloudStorageAccount.CreateCloudBlobClient();
-
-            var policyName = "ffmpeg";
-
             var resultContainerName = "job-" + jobId;
-            var resultContainer = client.GetContainerReference(resultContainerName);
-            resultContainer.CreateIfNotExists();
+            var account = SampleJobs.CloudStorageAccount;
+            var client = account.CreateCloudBlobClient();
 
+            var generateSAS = CreateSASGenerator(account, resultContainerName);
 
+            Func<string, string, Task<bool>> blobExistsAsync = async (containerName, blobName) =>
+            {
+                var container = client
+                    .GetContainerReference(containerName);
+                try 
+                {
+                    var blob = await container.GetBlobReferenceFromServerAsync(blobName);
+                    return await blob.ExistsAsync();
+                } 
+                catch (StorageException se) 
+                {
+                    return false;
+                }
+            };
 
+            Func<string, Task> uploadAync = async fileName => 
+            {
+                var fi = new FileInfo(fileName);
+                var exists = await blobExistsAsync(resultContainerName, fi.Name);
+                if (!exists)
+                {
+                    await LargeFileUploader.LargeFileUploaderUtils.UploadAsync(fi, account, resultContainerName);
+                }
+            };
 
-            SampleJobs.SetContainerPolicy(client, resultContainerName, policyName);
-            SampleJobs.SetContainerPolicy(client, "christiansampledata", policyName);
-            SampleJobs.SetContainerPolicy(client, "christianinput", policyName);
+            Task.WaitAll(
+                new [] { 
+                    @"..\..\..\demodata\input.mp4", 
+                    @"..\..\..\demodata\logo.png"
+                }
+                .Select(uploadAync)
+                .ToArray());
+
 
             var job = SampleJobs.CreateJob(
-                inputVideo: SampleJobs.GetSAS(client, "christiansampledata", "QuickTime-Testfile.mp4", policyName),
-                watermarkUrl: SampleJobs.GetSAS(client, "christiansampledata", "logo_small.png", policyName),
-                previewVideo: SampleJobs.GetSAS(client, resultContainerName, "preview.mp4", policyName),
-                posterImage: SampleJobs.GetSAS(client, resultContainerName, "thumbnail.jpg", policyName),
-                loggingBlob: SampleJobs.GetSAS(client, resultContainerName, "log.txt", policyName),
+                inputVideo: generateSAS("input.mp4"),
+                watermarkUrl: generateSAS("logo.png"),
+                previewVideo: generateSAS("preview.mp4"),
+                posterImage: generateSAS("thumbnail.jpg"),
+                loggingBlob: generateSAS("log.txt"),
                 jobCompletionUrl: "http://sampleapi.cloudapp.net/api/finishedstatus.php?job=123");
 
             var loop = new JobQueueWrapper(SampleJobs.CloudStorageAccount, "ffmpegqueue", TimeSpan.FromMinutes(60));
