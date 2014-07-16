@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.21005.1
+VisualStudioVersion = 12.0.30501.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{CC5FD16D-436D-48AD-A40C-5A424C6E3E79}") = "FFMPEGCloudService", "FFMPEGCloudService\FFMPEGCloudService.ccproj", "{6E6E3796-39B6-47F9-93C9-16BBD4174083}"
 EndProject
@@ -19,6 +19,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{4C1415
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DemoHost", "DemoHost\DemoHost.csproj", "{5A064A3C-31C6-4C31-8044-8254AB3FFA53}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "misc", "misc", "{24659FE8-F7F2-48F2-9D2D-E6BDF6766636}"
+	ProjectSection(SolutionItems) = preProject
+		LICENSE = LICENSE
+		README.md = README.md
+		restore-binaries.cmd = restore-binaries.cmd
+		restore-binaries.ps1 = restore-binaries.ps1
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
