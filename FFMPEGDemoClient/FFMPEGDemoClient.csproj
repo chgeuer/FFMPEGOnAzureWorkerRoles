@@ -72,11 +72,20 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="FFMPEGDemoClientProgram.cs" />
+    <Compile Include="Include_T4Include.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Include_T4Include.tt</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SampleJobs.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="Include_T4Include.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Include_T4Include.cs</LastGenOutput>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
@@ -84,6 +93,9 @@
       <Project>{4527e070-5db8-4816-9fd4-3d86d6c22328}</Project>
       <Name>FFMPEGLib</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />

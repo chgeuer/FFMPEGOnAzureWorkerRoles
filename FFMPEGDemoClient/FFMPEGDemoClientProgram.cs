@@ -23,6 +23,9 @@ namespace FFMPEGDemoClient
             var resultContainer = client.GetContainerReference(resultContainerName);
             resultContainer.CreateIfNotExists();
 
+
+
+
             SampleJobs.SetContainerPolicy(client, resultContainerName, policyName);
             SampleJobs.SetContainerPolicy(client, "christiansampledata", policyName);
             SampleJobs.SetContainerPolicy(client, "christianinput", policyName);
