@@ -1,4 +1,7 @@
-﻿namespace FFMPEGDemoClient
+﻿//
+// This is sample code from Christian Geuer-Pollmann (@chgeuer). Use it for whatever you like. 
+//
+namespace FFMPEGDemoClient
 {
     using System;
     using System.Linq;

@@ -1,4 +1,7 @@
-﻿namespace FFMPEGLib
+﻿//
+// This is sample code from Christian Geuer-Pollmann (@chgeuer). Use it for whatever you like. 
+//
+namespace FFMPEGLib
 {
     using System;
     using System.Collections.Generic;
