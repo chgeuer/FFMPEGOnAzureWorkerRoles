@@ -13,7 +13,7 @@ namespace FFMPEGDemoClient
     {
         static void Main(string[] args)
         {
-            var jobId = "gulliveotestdatasmalllogo";
+            var jobId = Guid.NewGuid().ToString();
 
             var client = SampleJobs.CloudStorageAccount.CreateCloudBlobClient();
 
@@ -40,7 +40,7 @@ namespace FFMPEGDemoClient
 
             Console.WriteLine(job.ToString());
 
-            Console.WriteLine("\n\n\nJob submitted");
+            Console.WriteLine("\n\n\nJob {0} submitted", jobId);
         }
     }
 }
