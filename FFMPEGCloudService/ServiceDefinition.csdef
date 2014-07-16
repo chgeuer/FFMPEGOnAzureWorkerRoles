@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ServiceDefinition name="FFMPEGCloudService" xmlns="http://schemas.microsoft.com/ServiceHosting/2008/10/ServiceDefinition" schemaVersion="2013-10.2.2">
+  <WorkerRole name="FFMPEGWorkerRole" vmsize="ExtraLarge">
+    <Runtime executionContext="elevated">
+    </Runtime>
+    <Imports>
+      <Import moduleName="Diagnostics" />
+    </Imports>
+    <ConfigurationSettings>
+      <Setting name="ApplicationStorageAccount" />
+      <Setting name="QueueName" />
+      <Setting name="FFMPEGMaximumExecutionDuration" />
+      <Setting name="JobLogBlobContainer" />
+    </ConfigurationSettings>
+  </WorkerRole>
+</ServiceDefinition>

@@ -1,0 +1,53 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{CC5FD16D-436D-48AD-A40C-5A424C6E3E79}") = "FFMPEGCloudService", "FFMPEGCloudService\FFMPEGCloudService.ccproj", "{6E6E3796-39B6-47F9-93C9-16BBD4174083}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FFMPEGWorkerRole", "FFMPEGWorkerRole\FFMPEGWorkerRole.csproj", "{ED0508ED-68EC-4FF2-8E94-39307685F8A2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FFMPEGLib", "FFMPEGLib\FFMPEGLib.csproj", "{4527E070-5DB8-4816-9FD4-3D86D6C22328}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FFMPEGDemoClient", "FFMPEGDemoClient\FFMPEGDemoClient.csproj", "{86D736A1-3AC2-4647-889F-52173D756E4B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{4C14153F-C2FE-459E-92B5-655728FEF1A4}"
+	ProjectSection(SolutionItems) = preProject
+		.nuget\NuGet.Config = .nuget\NuGet.Config
+		.nuget\NuGet.exe = .nuget\NuGet.exe
+		.nuget\NuGet.targets = .nuget\NuGet.targets
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DemoHost", "DemoHost\DemoHost.csproj", "{5A064A3C-31C6-4C31-8044-8254AB3FFA53}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6E6E3796-39B6-47F9-93C9-16BBD4174083}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E6E3796-39B6-47F9-93C9-16BBD4174083}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E6E3796-39B6-47F9-93C9-16BBD4174083}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E6E3796-39B6-47F9-93C9-16BBD4174083}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ED0508ED-68EC-4FF2-8E94-39307685F8A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ED0508ED-68EC-4FF2-8E94-39307685F8A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ED0508ED-68EC-4FF2-8E94-39307685F8A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ED0508ED-68EC-4FF2-8E94-39307685F8A2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4527E070-5DB8-4816-9FD4-3D86D6C22328}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4527E070-5DB8-4816-9FD4-3D86D6C22328}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4527E070-5DB8-4816-9FD4-3D86D6C22328}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4527E070-5DB8-4816-9FD4-3D86D6C22328}.Release|Any CPU.Build.0 = Release|Any CPU
+		{86D736A1-3AC2-4647-889F-52173D756E4B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{86D736A1-3AC2-4647-889F-52173D756E4B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{86D736A1-3AC2-4647-889F-52173D756E4B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{86D736A1-3AC2-4647-889F-52173D756E4B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A064A3C-31C6-4C31-8044-8254AB3FFA53}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A064A3C-31C6-4C31-8044-8254AB3FFA53}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A064A3C-31C6-4C31-8044-8254AB3FFA53}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A064A3C-31C6-4C31-8044-8254AB3FFA53}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

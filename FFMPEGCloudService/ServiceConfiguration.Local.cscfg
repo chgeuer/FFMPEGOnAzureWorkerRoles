@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ServiceConfiguration serviceName="FFMPEGCloudService" xmlns="http://schemas.microsoft.com/ServiceHosting/2008/10/ServiceConfiguration" osFamily="3" osVersion="*" schemaVersion="2013-10.2.2">
+  <Role name="FFMPEGWorkerRole">
+    <Instances count="1" />
+    <ConfigurationSettings>
+      <Setting name="Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString" value="UseDevelopmentStorage=true" />
+      <Setting name="ApplicationStorageAccount" value="UseDevelopmentStorage=true" />
+      <Setting name="QueueName" value="ffmpegqueue" />
+      <Setting name="FFMPEGMaximumExecutionDuration" value="01:59:59" />
+      <Setting name="JobLogBlobContainer" value="ffmpegjobs" />
+    </ConfigurationSettings>
+  </Role>
+</ServiceConfiguration>
