@@ -1,6 +1,4 @@
-$version = "ffmpeg-20140115-git-785dc14-win64-static"
-
-
+$version = "ffmpeg-latest-win64-static"
 
 function Download-File {
 	param (
