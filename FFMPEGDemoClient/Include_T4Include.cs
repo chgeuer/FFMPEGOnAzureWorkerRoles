@@ -22,8 +22,10 @@
 namespace LargeFileUploader
 {
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.IO;
+    using System.Linq;
     using System.Security.Cryptography;
     using System.Text;
     using System.Threading.Tasks;
@@ -37,26 +39,99 @@ namespace LargeFileUploader
         const int MB = kB * 1024;
         const long GB = MB * 1024;
         public static int NumBytesPerChunk = 4 * MB; // A block may be up to 4 MB in size. 
-
-
-        static LargeFileUploaderUtils()
-        {
-            LargeFileUploaderUtils.Log = _ => Console.WriteLine(_);
-        }
-
         public static Action<string> Log { get; set; }
 
-        private static void log(string format, params object[] args)
+        public static async Task UploadAsync(string inputFile, string storageConnectionString, string containerName, uint uploadParallelism = 1)
+        {
+            await new FileInfo(inputFile).UploadAsync(CloudStorageAccount.Parse(storageConnectionString), containerName, uploadParallelism);
+        }
+
+        public static async Task UploadAsync(this FileInfo file, CloudStorageAccount storageAccount, string containerName, uint uploadParallelism = 1)
+        {
+            const int MAXIMUM_UPLOAD_SIZE = 4 * MB;
+            if (NumBytesPerChunk > MAXIMUM_UPLOAD_SIZE) { NumBytesPerChunk = MAXIMUM_UPLOAD_SIZE; }
+
+            var blobName = file.Name;
+            long fileLength = file.Length;
+
+            var blobClient = storageAccount.CreateCloudBlobClient();
+            var container = blobClient.GetContainerReference(containerName);
+            await container.CreateIfNotExistsAsync();
+            var blockBlob = container.GetBlockBlobReference(blobName);
+
+            #region Which blocks exist in the file
+
+            var allBlockInFile = Enumerable
+                 .Range(0, 1 + ((int)(fileLength / NumBytesPerChunk)))
+                 .Select(_ => new BlockMetadata(_, fileLength, NumBytesPerChunk))
+                 .ToList();
+            var blockIdList = allBlockInFile.Select(_ => _.BlockId).ToList();
+
+            #endregion
+
+            #region Which blocks are already uploaded
+
+            List<BlockMetadata> missingBlocks = null;
+            try
+            {
+                var existingBlocks = (await blockBlob.DownloadBlockListAsync(
+                        BlockListingFilter.Uncommitted,
+                        AccessCondition.GenerateEmptyCondition(),
+                        new BlobRequestOptions { },
+                        new OperationContext()))
+                    .Where(_ => _.Length == NumBytesPerChunk)
+                    .ToList();
+
+                missingBlocks = allBlockInFile.Where(blockInFile => !existingBlocks.Any(existingBlock =>
+                    existingBlock.Name == blockInFile.BlockId &&
+                    existingBlock.Length == blockInFile.Length)).ToList();
+            }
+            catch (StorageException)
+            {
+                missingBlocks = allBlockInFile;
+            }
+
+            #endregion
+
+            Func<BlockMetadata, Statistics, Task> uploadBlock = async (block, stats) =>
+            {
+                byte[] blockData = await GetFileContentAsync(file, block.Index, block.Length);
+                string contentHash = md5()(blockData);
+
+                DateTime start = DateTime.UtcNow;
+
+                await ExecuteUntilSuccessAsync(async () =>
+                {
+                    await blockBlob.PutBlockAsync(block.BlockId, new MemoryStream(blockData, true), contentHash);
+                }, consoleExceptionHandler);
+
+                stats.Add(block.Length, start);
+            };
+
+            var s = new Statistics(missingBlocks.Sum(b => b.Length));
+
+            await LargeFileUploaderUtils.ForEachAsync(
+                source: missingBlocks,
+                parallelUploads: 4,
+                body: blockMetadata => uploadBlock(blockMetadata, s));
+
+            await ExecuteUntilSuccessAsync(async () =>
+            {
+                await blockBlob.PutBlockListAsync(blockIdList);
+            }, consoleExceptionHandler);
+
+            log("PutBlockList succeeded, finished upload to {0}", blockBlob.Uri.AbsoluteUri);
+        }
+
+        internal static void log(string format, params object[] args)
         {
             if (Log != null) { Log(string.Format(format, args)); }
         }
-
-        public static async Task<byte[]> GetFileContentAsync(this FileInfo file, long offset, int length)
+        internal static async Task<byte[]> GetFileContentAsync(this FileInfo file, long offset, int length)
         {
             using (var stream = file.OpenRead())
             {
                 stream.Seek(offset, SeekOrigin.Begin);
-
 
                 byte[] contents = new byte[length];
                 var len = await stream.ReadAsync(contents, 0, contents.Length);
@@ -70,185 +145,151 @@ namespace LargeFileUploader
                 return rest;
             }
         }
-
-        private static void consoleExceptionHandler(Exception ex)
+        internal static void consoleExceptionHandler(Exception ex)
         {
             log("Problem occured, trying again. Details of the problem: ");
             for (var e = ex; e != null; e = e.InnerException)
             {
-                Console.Error.WriteLine(e.Message);
+                log(e.Message);
             }
             log("---------------------------------------------------------------------");
             log(ex.StackTrace);
             log("---------------------------------------------------------------------");
         }
-
-        public static async Task UploadAsync(string inputFile, string storageConnectionString, string containerName)
+        internal static async Task ExecuteUntilSuccessAsync(Func<Task> action, Action<Exception> exceptionHandler)
         {
-            await new FileInfo(inputFile).UploadAsync(CloudStorageAccount.Parse(storageConnectionString), containerName);
+            bool success = false;
+            while (!success)
+            {
+                try
+                {
+                    await action();
+                    success = true;
+                }
+                catch (Exception ex)
+                {
+                    if (exceptionHandler != null) { exceptionHandler(ex); }
+                }
+            }
         }
-
-        public static async Task UploadAsync(this FileInfo file, CloudStorageAccount storageAccount, string containerName)
+        internal static Task ForEachAsync<T>(this IEnumerable<T> source, int parallelUploads, Func<T, Task> body)
         {
-            if (NumBytesPerChunk > 4 * MB) NumBytesPerChunk = 4 * MB;
-
-            var blobName = file.Name;
-
-            Func<Func<Task>, Action<Exception>, Task> executeUntilSuccessAsync = async (action, exceptionHandler) =>
-            {
-                bool success = false;
-                while (!success)
+            return Task.WhenAll(
+                Partitioner
+                .Create(source)
+                .GetPartitions(parallelUploads)
+                .Select(partition => Task.Run(async () =>
                 {
-                    try
+                    using (partition)
                     {
-                        await action();
-                        success = true;
+                        while (partition.MoveNext())
+                        {
+                            await body(partition.Current);
+                        }
                     }
-                    catch (Exception ex)
-                    {
-                        if (exceptionHandler != null) { exceptionHandler(ex); }
-                    }
+                })));
+        }
+        internal static Func<byte[], string> md5()
+        {
+            var hashFunction = MD5.Create();
+
+            return (content) => Convert.ToBase64String(hashFunction.ComputeHash(content));
+        }
+        internal class BlockMetadata
+        {
+            internal BlockMetadata(int id, long length, int bytesPerChunk)
+            {
+                this.Id = id;
+                this.BlockId = Convert.ToBase64String(System.BitConverter.GetBytes(id));
+                this.Index = ((long)id) * ((long)bytesPerChunk);
+                long remainingBytesInFile = length - this.Index;
+                this.Length = (int)Math.Min(remainingBytesInFile, (long)bytesPerChunk);
+            }
+
+            public long Index { get; private set; }
+            public int Id { get; private set; }
+            public string BlockId { get; private set; }
+            public int Length { get; private set; }
+        }
+        internal class Statistics
+        {
+            public Statistics(long totalBytes) { this.TotalBytes = totalBytes; }
+
+            internal readonly DateTime InitialStartTime = DateTime.UtcNow;
+            
+            internal readonly object _lock = new object();
+            internal long TotalBytes { get; private set; }
+            internal long Done { get; private set; }
+
+            internal void Add(long moreBytes, DateTime start)
+            {
+                long done;
+                lock (_lock)
+                {
+                    this.Done += moreBytes;
+                    done = this.Done;
                 }
-            };
 
-            Action<Action, Action<Exception>> executeUntilSuccess = (action, exceptionHandler) =>
-            {
-                bool success = false;
-                while (!success)
-                {
-                    try
-                    {
-                        action();
-                        success = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        if (exceptionHandler != null) { exceptionHandler(ex); }
-                    }
-                }
-            };
-
-            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-            CloudBlobContainer container = blobClient.GetContainerReference(containerName);
-            await container.CreateIfNotExistsAsync();
-
-            //var permission = container.GetPermissions();
-            //permission.PublicAccess = BlobContainerPublicAccessType.Container;
-            //container.SetPermissions(permission);
-
-            CloudBlockBlob blob = container.GetBlockBlobReference(blobName);
-
-            List<string> blockIdList = new List<string>();
-            List<string> debugList = new List<string>();
-
-            Func<Task> saveListToFile = async () =>
-            {
-                //var text = new StringBuilder();
-                //text.AppendLine("{");
-                //text.AppendLine("  file = \"" + file.FullName + "\", ");
-                //text.AppendLine("  length = " + file.Length + ", ");
-                //text.AppendLine("  chunkSize = " + NumBytesPerChunk + ", ");
-                //text.AppendLine("  blobname = \"" + blobName + "\", ");
-                //text.AppendLine("  blobEndpoint = \"" + storageAccount.BlobEndpoint.AbsoluteUri + "\", ");
-                //text.AppendLine("  chunks =");
-                //text.AppendLine("  {");
-                //debugList.ForEach(_ => text.AppendLine(_));
-                //text.AppendLine("  }");
-                //text.AppendLine("}");
-
-                //File.WriteAllText("log.txt", text.ToString());
-            };
-
-            Console.WriteLine("Starting upload in chunks of {0} bytes", NumBytesPerChunk);
-
-            MD5 hashFunction = MD5.Create();
-            Func<byte[], string> md5 = (content) => Convert.ToBase64String(hashFunction.ComputeHash(content));
-
-            DateTime initialStartTime = DateTime.UtcNow;
-            int id = 0;
-            for (long index = 0; index < file.Length; index += NumBytesPerChunk, id++)
-            {
-                byte[] blockData = await GetFileContentAsync(file, index, NumBytesPerChunk);
-                string contentHash = md5(blockData);
-
-                string blockId = Convert.ToBase64String(System.BitConverter.GetBytes(id));
-
-                //string plaintextBlockId = string.Format("{{ filename = \"{0}\", segment = {1}, startByte = {2}, endByte = {3}, md5 = \"{4}\" }}",
-                //    file.FullName, id, index, index + blockData.Length, contentHash);
-                //string blockId = Convert.ToBase64String(Encoding.UTF8.GetBytes(plaintextBlockId));
-
-                DateTime start = DateTime.UtcNow;
-
-                await executeUntilSuccessAsync(async () =>
-                {
-                    await blob.PutBlockAsync(blockId, new MemoryStream(blockData, true), contentHash);
-                }, consoleExceptionHandler);
-
-                blockIdList.Add(blockId);
-                debugList.Add(string.Format("      {{ blockId = {0}, firstByte = {1}, lastByte = {2}, md5 = \"{3}\" }}, ", blockId, index, index + blockData.Length - 1, contentHash));
-                executeUntilSuccess(() => saveListToFile(), consoleExceptionHandler);
-
-                var kbPerSec = (((double)blockData.Length) / (DateTime.UtcNow.Subtract(start).TotalSeconds * kB));
-                var MBPerMin = (((double)blockData.Length) / (DateTime.UtcNow.Subtract(start).TotalMinutes * MB));
-
-                Func<long, long, string> absoluteProgress = (current, total) =>
-                {
-                    if (file.Length < kB)
-                    {
-                        // Bytes is reasonable
-                        return string.Format("{0} of {1} bytes", current, total);
-                    }
-                    else if (file.Length < 10 * MB)
-                    {
-                        // kB is a reasonable unit
-                        return string.Format("{0} of {1} kByte", (current / kB), (total / kB));
-                    }
-                    else if (file.Length < 10 * GB)
-                    {
-                        // MB is a reasonable unit
-                        return string.Format("{0} of {1} MB", (current / MB), (total / MB));
-                    }
-                    else
-                    {
-                        // GB is a reasonable unit
-                        return string.Format("{0} of {1} GB", (current / GB), (total / GB));
-                    }
-                };
-
-                Func<long, long, string> relativeProgress = (current, total) => string.Format(
-                    "{0} %", (100.0 * current / total).ToString("F3"));
-
-                Func<long, long, string> estimatedArrivalTime = (current, total) =>
-                {
-                    double elapsedSeconds = DateTime.UtcNow.Subtract(initialStartTime).TotalSeconds;
-                    double progress = ((double)current) / ((double)total);
-
-                    if (current == 0) return "unknown time";
-
-                    double remainingSeconds = elapsedSeconds * (1 - progress) / progress;
-
-                    TimeSpan remaining = TimeSpan.FromSeconds(remainingSeconds);
-
-                    return string.Format("{0} remaining, (expect to finish by {1} local time)",
-                        remaining.ToString("g"),
-                        DateTime.Now.ToLocalTime().Add(remaining));
-                };
+                var kbPerSec = (((double)moreBytes) / (DateTime.UtcNow.Subtract(start).TotalSeconds * kB));
+                var MBPerMin = (((double)moreBytes) / (DateTime.UtcNow.Subtract(start).TotalMinutes * MB));
 
                 log(
                     "Uploaded {0} ({1}) with {2} kB/sec ({3} MB/min), {4}",
-                    absoluteProgress(index + blockData.Length, file.Length),
-                    relativeProgress(index + blockData.Length, file.Length),
+                    absoluteProgress(done, this.TotalBytes),
+                    relativeProgress(done, this.TotalBytes),
                     kbPerSec.ToString("F0"),
                     MBPerMin.ToString("F1"),
-                    estimatedArrivalTime(index + blockData.Length, file.Length));
+                    estimatedArrivalTime()
+                    );
             }
 
-            executeUntilSuccess(async () =>
+            internal string estimatedArrivalTime()
             {
-                await blob.PutBlockListAsync(blockIdList);
-            }, consoleExceptionHandler);
-            executeUntilSuccess(() => saveListToFile(), consoleExceptionHandler);
-            log("PutBlockList succeeded, finished upload to {0}", blob.Uri.AbsoluteUri);
+                var now = DateTime.UtcNow;
+
+                double elapsedSeconds = now.Subtract(InitialStartTime).TotalSeconds;
+                double progress = ((double)this.Done) / ((double)this.TotalBytes);
+
+                if (this.Done == 0) return "unknown time";
+
+                double remainingSeconds = elapsedSeconds * (1 - progress) / progress;
+
+                TimeSpan remaining = TimeSpan.FromSeconds(remainingSeconds);
+
+                return string.Format("{0} remaining, (expect to finish by {1} local time)",
+                    remaining.ToString("g"),
+                    now.ToLocalTime().Add(remaining));
+            }
+
+            private static string absoluteProgress(long current, long total)
+            {
+                if (total < kB)
+                {
+                    // Bytes is reasonable
+                    return string.Format("{0} of {1} bytes", current, total);
+                }
+                else if (total < 10 * MB)
+                {
+                    // kB is a reasonable unit
+                    return string.Format("{0} of {1} kByte", (current / kB), (total / kB));
+                }
+                else if (total < 10 * GB)
+                {
+                    // MB is a reasonable unit
+                    return string.Format("{0} of {1} MB", (current / MB), (total / MB));
+                }
+                else
+                {
+                    // GB is a reasonable unit
+                    return string.Format("{0} of {1} GB", (current / GB), (total / GB));
+                }
+            }
+
+            private static string relativeProgress(long current, long total)
+            {
+                return string.Format("{0} %",
+                    (100.0 * current / total).ToString("F3"));
+            }
         }
     }
 }
@@ -261,7 +302,7 @@ namespace notinuse.Include
     static partial class MetaData
     {
         public const string RootPath        = @"https://github.com/";
-        public const string IncludeDate     = @"2014-07-16T11:58:38";
+        public const string IncludeDate     = @"2014-07-17T11:39:55";
 
         public const string Include_0       = @"https://github.com/chgeuer/AzureLargeFileUploader/raw/master/LargeFileUploaderUtils.cs";
     }

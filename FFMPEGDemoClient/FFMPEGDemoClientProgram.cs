@@ -4,13 +4,13 @@
 namespace FFMPEGDemoClient
 {
     using System;
-    using System.Linq;
-    using System.Collections.Generic;
     using System.IO;
-    using FFMPEGLib;
+    using System.Linq;
     using System.Threading.Tasks;
-using Microsoft.WindowsAzure.Storage;
+    using Microsoft.WindowsAzure.Storage;
     using Microsoft.WindowsAzure.Storage.Blob;
+
+    using FFMPEGLib;
 
     class FFMPEGDemoClientProgram
     {
@@ -58,29 +58,29 @@ using Microsoft.WindowsAzure.Storage;
             {
                 var container = client
                     .GetContainerReference(containerName);
-                try 
+                try
                 {
                     var blob = await container.GetBlobReferenceFromServerAsync(blobName);
                     return await blob.ExistsAsync();
-                } 
-                catch (StorageException se) 
+                }
+                catch (StorageException se)
                 {
                     return false;
                 }
             };
 
-            Func<string, Task> uploadAync = async fileName => 
+            Func<string, Task> uploadAync = async fileName =>
             {
                 var fi = new FileInfo(fileName);
                 var exists = await blobExistsAsync(resultContainerName, fi.Name);
                 if (!exists)
                 {
-                    await LargeFileUploader.LargeFileUploaderUtils.UploadAsync(fi, account, resultContainerName);
+                    await LargeFileUploader.LargeFileUploaderUtils.UploadAsync(fi, account, resultContainerName, 2);
                 }
             };
 
             Task.WaitAll(
-                new [] { 
+                new[] { 
                     @"..\..\..\demodata\input.mp4", 
                     @"..\..\..\demodata\logo.png"
                 }
