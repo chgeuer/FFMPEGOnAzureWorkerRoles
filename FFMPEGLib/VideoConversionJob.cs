@@ -28,6 +28,6 @@ namespace FFMPEGLib
 
         public List<string> FFMPEGCommandLines { get; set; }
         
-        public string JobCompletionNotificationUrl { get; set; }
+        public string QueueNotificationUrl { get; set; }
     }
 }

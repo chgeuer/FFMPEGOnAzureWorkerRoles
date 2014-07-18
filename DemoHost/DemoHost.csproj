@@ -71,9 +71,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\FFMPEGDemoClient\SampleJobs.cs">
-      <Link>SampleJobs.cs</Link>
-    </Compile>
     <Compile Include="DemoHostProgram.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

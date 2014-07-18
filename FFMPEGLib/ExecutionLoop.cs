@@ -16,6 +16,7 @@ namespace FFMPEGLib
     using Microsoft.WindowsAzure.Storage;
     using Microsoft.WindowsAzure.Storage.Blob;
     using Microsoft.WindowsAzure.Storage.Queue;
+    using Microsoft.WindowsAzure.Storage.Auth;
 
 
     public class ExecutionLoop
@@ -28,7 +29,7 @@ namespace FFMPEGLib
         private readonly DirectoryInfo TmpPath;
         private readonly DirectoryInfo LoggingFolder;
 
-        public ExecutionLoop(CloudStorageAccount cloudStorageAccount, string queueName, 
+        public ExecutionLoop(CloudStorageAccount cloudStorageAccount, string queueName,
             TimeSpan visibilityTimeout, string logBlobStorage, DirectoryInfo tmpPath, DirectoryInfo loggingFolder)
         {
             this.cloudStorageAccount = cloudStorageAccount;
@@ -216,25 +217,31 @@ namespace FFMPEGLib
 
                     #region Call web site
 
-                    if (!string.IsNullOrEmpty(job.JobCompletionNotificationUrl))
+                    if (!string.IsNullOrEmpty(job.QueueNotificationUrl))
                     {
-                        for (int i = 0; i < 5; i++)
-                        {
-                            var httpClient = new HttpClient();
-                            var response = httpClient.GetAsync(job.JobCompletionNotificationUrl).Result;
-                            if (response.IsSuccessStatusCode)
-                            {
-                                break;
-                            }
-                            else
-                            {
-                                logger.logErr(string.Format("Could not call {0}", job.JobCompletionNotificationUrl));
-                                flush();
-                                Thread.Sleep(TimeSpan.FromSeconds(2));
-                            }
+                        var queue = new CloudQueue(new Uri(job.QueueNotificationUrl));
 
-                        }
+                        queue.AddMessage(new CloudQueueMessage(logger.ToString()));
                     }
+
+                    //if (!string.IsNullOrEmpty(job.JobCompletionNotificationUrl))
+                    //{
+                    //    for (int i = 0; i < 5; i++)
+                    //    {
+                    //        var httpClient = new HttpClient();
+                    //        var response = httpClient.GetAsync(job.JobCompletionNotificationUrl).Result;
+                    //        if (response.IsSuccessStatusCode)
+                    //        {
+                    //            break;
+                    //        }
+                    //        else
+                    //        {
+                    //            logger.logErr(string.Format("Could not call {0}", job.JobCompletionNotificationUrl));
+                    //            flush();
+                    //            Thread.Sleep(TimeSpan.FromSeconds(2));
+                    //        }
+                    //    }
+                    //}
 
                     #endregion
                 }
@@ -268,7 +275,7 @@ namespace FFMPEGLib
             }
         }
 
-        public static Tuple<string,IList<FileInfo>> SubstituteCommandlineArgs(string _, IList<FileInfo> localInputFiles, IList<FileInfo> localResultFiles)
+        public static Tuple<string, IList<FileInfo>> SubstituteCommandlineArgs(string _, IList<FileInfo> localInputFiles, IList<FileInfo> localResultFiles)
         {
             _ = Regex.Replace(_, "^ffmpeg[\\S]*", string.Empty);
 

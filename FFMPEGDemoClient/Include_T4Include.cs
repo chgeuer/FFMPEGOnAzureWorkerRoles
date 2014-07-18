@@ -40,6 +40,7 @@ namespace LargeFileUploader
         const long GB = MB * 1024;
         public static int NumBytesPerChunk = 4 * MB; // A block may be up to 4 MB in size. 
         public static Action<string> Log { get; set; }
+        public static void UseConsoleForLogging() { Log = Console.Out.WriteLine; }
 
         public static async Task UploadAsync(string inputFile, string storageConnectionString, string containerName, uint uploadParallelism = 1)
         {
@@ -64,6 +65,7 @@ namespace LargeFileUploader
             var allBlockInFile = Enumerable
                  .Range(0, 1 + ((int)(fileLength / NumBytesPerChunk)))
                  .Select(_ => new BlockMetadata(_, fileLength, NumBytesPerChunk))
+                 .Where(block => block.Length > 0)
                  .ToList();
             var blockIdList = allBlockInFile.Select(_ => _.BlockId).ToList();
 
@@ -78,7 +80,7 @@ namespace LargeFileUploader
                         BlockListingFilter.Uncommitted,
                         AccessCondition.GenerateEmptyCondition(),
                         new BlobRequestOptions { },
-                        new OperationContext()))
+                        new OperationContext { }))
                     .Where(_ => _.Length == NumBytesPerChunk)
                     .ToList();
 
@@ -102,7 +104,17 @@ namespace LargeFileUploader
 
                 await ExecuteUntilSuccessAsync(async () =>
                 {
-                    await blockBlob.PutBlockAsync(block.BlockId, new MemoryStream(blockData, true), contentHash);
+                    await blockBlob.PutBlockAsync(
+                        blockId: block.BlockId, 
+                        blockData: new MemoryStream(blockData, true),
+                        contentMD5: contentHash,
+                        accessCondition: AccessCondition.GenerateEmptyCondition(),
+                        options: new BlobRequestOptions 
+                        { 
+                            StoreBlobContentMD5 = true,
+                            UseTransactionalMD5 = true
+                        },
+                        operationContext: new OperationContext());
                 }, consoleExceptionHandler);
 
                 stats.Add(block.Length, start);
@@ -302,7 +314,7 @@ namespace notinuse.Include
     static partial class MetaData
     {
         public const string RootPath        = @"https://github.com/";
-        public const string IncludeDate     = @"2014-07-17T11:39:55";
+        public const string IncludeDate     = @"2014-07-17T15:34:16";
 
         public const string Include_0       = @"https://github.com/chgeuer/AzureLargeFileUploader/raw/master/LargeFileUploaderUtils.cs";
     }

@@ -8,7 +8,7 @@ namespace DemoHost
     using System.Threading;
 
     using FFMPEGLib;
-    using FFMPEGDemoClient;
+    using Microsoft.WindowsAzure.Storage;
 
     class DemoHostProgram
     {
@@ -18,7 +18,7 @@ namespace DemoHost
 
             var cts = new CancellationTokenSource();
             var loop = new ExecutionLoop(
-                cloudStorageAccount: SampleJobs.CloudStorageAccount, 
+                cloudStorageAccount: CloudStorageAccount.Parse(Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING")), 
                 queueName: queueName, 
                 visibilityTimeout: TimeSpan.FromMinutes(60), 
                 logBlobStorage: "demologjobs", 
@@ -27,7 +27,7 @@ namespace DemoHost
                 );
             // loop.FlushQueue(cts.Token);
 
-            SampleJobs.SubmitSampleJob(Guid.NewGuid().ToString(), queueName);
+            //SampleJobs.SubmitSampleJob(Guid.NewGuid().ToString(), queueName);
             loop.Run(cts.Token);
 
             Console.WriteLine("run terminated");
