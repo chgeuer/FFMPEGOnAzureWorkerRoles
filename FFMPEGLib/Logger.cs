@@ -16,9 +16,6 @@ namespace FFMPEGLib
         private object o = new object();
         private StringBuilder loggingOutput = new StringBuilder();
         private string LocalLogFile;
-        private string p;
-        private DirectoryInfo directoryInfo;
-        private VideoConversionJob job; 
 
         public Logger(string url, DirectoryInfo logingFolder, VideoConversionJob job)
         {
@@ -85,7 +82,7 @@ namespace FFMPEGLib
 
                     blob.UploadText(loggingOutput.ToString(), Encoding.UTF8);
                 }
-                catch (Exception e) { }
+                catch (Exception) { }
             }
             else
             {

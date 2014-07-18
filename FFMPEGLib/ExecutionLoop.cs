@@ -142,10 +142,15 @@ namespace FFMPEGLib
 
                     #region Execute the damn thing and incrementally upload results
 
+                    var statusData = new VideoConversionJobResults();
+
                     foreach (var commandlineAndFiles in job.FFMPEGCommandLines.Select(commandline => ExecutionLoop.SubstituteCommandlineArgs(commandline, localInputFiles, localResultFiles)))
                     {
                         var commandline = commandlineAndFiles.Item1;
                         var resultsOfThisExecution = commandlineAndFiles.Item2;
+
+                        var stdOut = new StringBuilder();
+                        var stdErr = new StringBuilder();
 
                         #region Execute
 
@@ -166,8 +171,8 @@ namespace FFMPEGLib
                             EnableRaisingEvents = true
                         };
 
-                        process.OutputDataReceived += (s, a) => logger.logInfo(a.Data);
-                        process.ErrorDataReceived += (s, a) => logger.logErr(a.Data); 
+                        process.OutputDataReceived += (s, a) => { logger.logInfo(a.Data); stdOut.AppendLine(a.Data); };
+                        process.ErrorDataReceived += (s, a) => { logger.logErr(a.Data); stdErr.AppendLine(a.Data); };
 
                         try
                         {
@@ -211,17 +216,29 @@ namespace FFMPEGLib
                         {
                             logger.logErr("ffmpeg ExitCode indicated error: " + process.ExitCode);
                         }
+
+                        statusData.Results.Add(new VideoConversionJobResult
+                        { 
+                            CommandLine = ffmpegPath + " " + commandline,
+                            ErrorCode = process.ExitCode,
+                            StandardOut = stdOut.ToString(),
+                            StandardErr = stdErr.ToString()
+                        });
                     }
 
                     #endregion
 
                     #region Call web site
 
+                    statusData.LoggerData = logger.ToString();
+
                     if (!string.IsNullOrEmpty(job.QueueNotificationUrl))
                     {
                         var queue = new CloudQueue(new Uri(job.QueueNotificationUrl));
 
-                        queue.AddMessage(new CloudQueueMessage(logger.ToString()));
+
+                        
+                        queue.AddMessage(new CloudQueueMessage(statusData.ToString()));
                     }
 
                     //if (!string.IsNullOrEmpty(job.JobCompletionNotificationUrl))

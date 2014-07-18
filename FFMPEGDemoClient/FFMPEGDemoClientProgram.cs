@@ -150,7 +150,26 @@ namespace FFMPEGDemoClient
 
             var msg = responseQueue.GetMessage();
             while (msg == null) { msg = responseQueue.GetMessage(); }
-            Console.WriteLine(msg.AsString);
+
+
+            Action<ConsoleColor, string> outstr = (c, s) =>
+            {
+                Console.ForegroundColor = c;
+                Console.Out.WriteLine(s);
+                Console.ResetColor();
+            };
+
+            var result = VideoConversionJobResults.FromJson(msg.AsString);
+            outstr(ConsoleColor.Green, result.LoggerData);
+
+            foreach (var r in result.Results)
+            {
+                outstr(ConsoleColor.Yellow, r.CommandLine);
+                outstr(ConsoleColor.Blue, r.StandardOut);
+                outstr(ConsoleColor.Red, r.StandardErr);
+                outstr(ConsoleColor.White, r.ErrorCode.ToString());
+            }
+
             responseQueue.Delete();
         }
     }
