@@ -47,24 +47,7 @@ namespace FFMPEGWorkerRole
                 RoleEnvironment.GetConfigurationSettingValue("QueueName"),
                 visibilityTimeout, logBlobContainerName, tmpPath, ffmpeglogs);
 
-
-
-            TimeSpan scheduledTransferPeriod = TimeSpan.FromMinutes(1);
             ServicePointManager.DefaultConnectionLimit = 12;
-            var diagConfig = DiagnosticMonitor.GetDefaultInitialConfiguration();
-            diagConfig.DiagnosticInfrastructureLogs.ScheduledTransferLogLevelFilter = Microsoft.WindowsAzure.Diagnostics.LogLevel.Verbose;
-            diagConfig.DiagnosticInfrastructureLogs.ScheduledTransferPeriod = scheduledTransferPeriod;
-            diagConfig.WindowsEventLog.ScheduledTransferLogLevelFilter = Microsoft.WindowsAzure.Diagnostics.LogLevel.Warning;
-            diagConfig.WindowsEventLog.ScheduledTransferPeriod = scheduledTransferPeriod;
-            diagConfig.Logs.ScheduledTransferLogLevelFilter = Microsoft.WindowsAzure.Diagnostics.LogLevel.Verbose;
-            diagConfig.Logs.ScheduledTransferPeriod = scheduledTransferPeriod;
-            diagConfig.Directories.DataSources.Add(new DirectoryConfiguration
-            {
-                Path = ffmpeglogs.FullName,
-                Container = "ffmpeglogs"
-            });
-            diagConfig.ConfigurationChangePollInterval = TimeSpan.FromMinutes(1);
-            DiagnosticMonitor.Start(DiagnosticsConnectionString, diagConfig);
 
             return base.OnStart();
         }
