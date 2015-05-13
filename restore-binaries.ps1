@@ -16,7 +16,7 @@ function Download-File {
   $downloader.DownloadFile($url, $file)
 }
 
-# Download-File "http://ffmpeg.zeranoe.com/builds/win64/static/$($version).7z" "$($version).7z"
+Download-File "http://ffmpeg.zeranoe.com/builds/win64/static/$($version).7z" "$($version).7z"
 
 .\bin\7z.exe x -y "$($version).7z"
 
