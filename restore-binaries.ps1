@@ -5,7 +5,7 @@ function Download-File {
 	  [string]$url,
 	  [string]$file
 	 )
-Write-Host "Download $file"
+  Write-Host "Download $file"
   if (Test-Path $file) 
   {
   	Write-Host "File $file is already there, skipping download"
@@ -16,9 +16,11 @@ Write-Host "Download $file"
   $downloader.DownloadFile($url, $file)
 }
 
+# Download-File "http://ffmpeg.zeranoe.com/builds/win64/static/$($version).7z" "$($version).7z"
 
-Download-File "http://ffmpeg.zeranoe.com/builds/win64/static/$($version).7z" "$($version).7z"
-Download-File "https://erlang.blob.core.windows.net/installers/7za.exe" "7za.exe"
-.\7za.exe x -y "$($version).7z"
-Move-Item "$($version)\bin\ffmpeg.exe" FFMPEGLib\ffmpeg.exe
-Remove-Item -Recurse -Force ".\$($version)"
+.\bin\7z.exe x -y "$($version).7z"
+
+$folder = (Get-ChildItem -Recurse -Filter "ffmpeg-*-win64-static").FullName
+Remove-Item FFMPEGLib\ffmpeg.exe
+Copy-Item "$($folder)\bin\ffmpeg.exe" FFMPEGLib\ffmpeg.exe
+Remove-Item -Recurse -Force "$($folder)"
